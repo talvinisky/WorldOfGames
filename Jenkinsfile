@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    triggers {
-        pollSCM '*/5 * * * *'
-    }
     stages {
         stage('Checkout') {
             steps {
@@ -25,17 +22,34 @@ pipeline {
         }
         stage("Test") {
             steps {
-                sh 'docker-compose exec flask_app python /app/tests/e2e.py'
+                script {
+                    try {
+                        sh 'docker-compose exec flask_app python /app/tests/e2e.py'
+                    } catch (Exception e) {
+                        currentBuild.result = 'FAILURE'
+                        throw e
+                    }
+                }
             }
         }
         stage("Finalize") {
+            when {
+                expression {
+                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
+                }
+            }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_ID')]) {
                     sh 'docker login -u $DOCKER_ID -p $DOCKER_PASSWORD'
-                    sh 'docker push khjomaa/world_of_games:latest'
+                    sh 'docker push talvinisky1208/world_of_games:latest'
                 }
                 sh 'docker-compose down; docker rmi $(docker images -q)'
             }
+        }
+    }
+    post {
+        always {
+            cleanWs()
         }
     }
 }
