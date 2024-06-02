@@ -11,3 +11,8 @@ services:
       - .:/app
     environment:
       - FLASK_ENV=development
+
+  selenium_chrome:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
