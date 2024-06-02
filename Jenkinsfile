@@ -9,6 +9,8 @@ pipeline {
         stage("Build") {
             steps {
                 sh 'docker-compose build'
+                // Tag the built image
+                sh 'docker tag wog_flask_app:latest talvinisky1208/world_of_games:latest'
             }
         }
         stage("Run") {
@@ -40,7 +42,7 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_ID')]) {
-                    sh 'docker login -u $DOCKER_ID -p $DOCKER_PASSWORD'
+                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_ID --password-stdin'
                     sh 'docker push talvinisky1208/world_of_games:latest'
                 }
                 sh 'docker-compose down; docker rmi $(docker images -q)'
