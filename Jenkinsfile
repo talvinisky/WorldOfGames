@@ -16,7 +16,7 @@ pipeline {
                 sh 'docker-compose up -d'
                 // Ensure services are up
                 script {
-                    sleep 10 // Adjust the sleep time as necessary
+                    sleep 15 // Adjust the sleep time as necessary
                 }
             }
         }
@@ -24,7 +24,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'docker-compose exec flask_app python /app/tests/e2e.py'
+                        sh 'docker-compose exec -T flask_app python /app/tests/e2e.py'
                     } catch (Exception e) {
                         currentBuild.result = 'FAILURE'
                         throw e
