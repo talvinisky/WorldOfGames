@@ -1,76 +1,40 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('your-dockerhub-credentials-id')
-        DOCKER_IMAGE = 'your-dockerhub-username/your-image-name'
+    triggers {
+        pollSCM '*/5 * * * *'
     }
-
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git "https://github.com/talvinisky/WorldOfGames"
             }
         }
-
-        stage('Build') {
+        stage("Build") {
             steps {
+                sh 'docker-compose build'
+            }
+        }
+        stage("Run") {
+            steps {
+                sh 'docker-compose up -d'
+                // Ensure services are up
                 script {
-                    // Build the Docker image using Docker Compose
-                    sh 'docker-compose build'
+                    sleep 10 // Adjust the sleep time as necessary
                 }
             }
         }
-
-        stage('Run') {
+        stage("Test") {
             steps {
-                script {
-                    // Run the Docker container using Docker Compose
-                    sh 'docker-compose up -d'
-                }
+                sh 'docker-compose exec flask_app python /app/tests/e2e.py'
             }
         }
-
-        stage('Test') {
+        stage("Finalize") {
             steps {
-                script {
-                    // Run the e2e tests
-                    try {
-                        sh 'docker-compose exec flask_app python /app/tests/e2e.py'
-                    } catch (Exception err) {
-                        currentBuild.result = 'FAILURE'
-                        error('Tests failed')
-                    }
+                withCredentials([usernamePassword(credentialsId: 'DockerHub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_ID')]) {
+                    sh 'docker login -u $DOCKER_ID -p $DOCKER_PASSWORD'
+                    sh 'docker push khjomaa/world_of_games:latest'
                 }
-            }
-        }
-
-        stage('Finalize') {
-            steps {
-                script {
-                    // Stop and remove the container using Docker Compose
-                    sh 'docker-compose down'
-
-                    // Push the new image to DockerHub
-                    docker.withRegistry('https://index.docker.io/v1/', 'DOCKERHUB_CREDENTIALS') {
-                        sh 'docker-compose push'
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            script {
-                // Cleanup dangling Docker images and containers
-                sh 'docker system prune -f'
-            }
-        }
-        failure {
-            script {
-                // Notify on failure
-                echo 'Pipeline failed.'
+                sh 'docker-compose down; docker rmi $(docker images -q)'
             }
         }
     }
