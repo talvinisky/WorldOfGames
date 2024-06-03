@@ -9,15 +9,14 @@ pipeline {
         stage("Build") {
             steps {
                 sh 'docker-compose build'
-                sh 'docker tag wog_flask_app:latest talvinisky1208/world_of_games:latest'
             }
         }
         stage("Run") {
             steps {
                 sh 'docker-compose up -d'
-
+                // Ensure services are up
                 script {
-                    sleep 15
+                    sleep 15 // Adjust the sleep time as necessary
                 }
             }
         }
@@ -42,6 +41,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_ID')]) {
                     sh 'docker login -u $DOCKER_ID -p $DOCKER_PASSWORD'
+                    sh 'docker tag wog_flask_app:latest talvinisky1208/world_of_games:latest'
                     sh 'docker push talvinisky1208/world_of_games:latest'
                 }
             }
@@ -50,11 +50,18 @@ pipeline {
     post {
         always {
             script {
+                // Stop and remove containers
                 sh 'docker-compose down'
-
+                // Remove all containers
                 sh 'docker container prune -f'
-
-                sh 'docker rmi $(docker images -q) --force || true'
+                // Remove images safely
+                def images = sh(script: 'docker images -q', returnStdout: true).trim()
+                if (images) {
+                    def imageList = images.split("\n")
+                    imageList.each { image ->
+                        sh "docker rmi --force ${image} || true"
+                    }
+                }
             }
             cleanWs()
         }
