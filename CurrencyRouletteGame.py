@@ -1,7 +1,5 @@
 import random
 import requests
-
-
 def get_money_interval(total_value, difficulty):
     url = "https://api.freecurrencyapi.com/v1/latest?apikey=fca_live_oXzOwCLXoWPWcmAu7oLCWFYRyNF4buu6drVwTTTT&currencies=ILS"
     response = requests.get(url)

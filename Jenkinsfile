@@ -9,14 +9,15 @@ pipeline {
         stage("Build") {
             steps {
                 sh 'docker-compose build'
+                sh 'docker tag wog_flask_app:latest talvinisky1208/world_of_games:latest'
             }
         }
         stage("Run") {
             steps {
                 sh 'docker-compose up -d'
-                // Ensure services are up
+
                 script {
-                    sleep 15 // Adjust the sleep time as necessary
+                    sleep 15
                 }
             }
         }
@@ -32,7 +33,7 @@ pipeline {
                 }
             }
         }
-        stage("Finalize") {
+        stage("Push to DockerHub") {
             when {
                 expression {
                     currentBuild.result == null || currentBuild.result == 'SUCCESS'
@@ -43,12 +44,18 @@ pipeline {
                     sh 'docker login -u $DOCKER_ID -p $DOCKER_PASSWORD'
                     sh 'docker push talvinisky1208/world_of_games:latest'
                 }
-                sh 'docker-compose down; docker rmi $(docker images -q)'
             }
         }
     }
     post {
         always {
+            script {
+                sh 'docker-compose down'
+
+                sh 'docker container prune -f'
+
+                sh 'docker rmi $(docker images -q) --force || true'
+            }
             cleanWs()
         }
     }
